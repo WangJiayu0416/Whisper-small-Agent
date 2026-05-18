@@ -1,0 +1,17 @@
+torch>=2.0
+torchaudio>=2.0
+transformers>=4.36
+datasets>=2.16
+peft>=0.7
+accelerate>=0.25
+evaluate
+jiwer                    # WER计算
+librosa>=0.10
+soundfile
+audiomentations>=0.34    # 专业音频增强库
+faster-whisper>=0.10     # CTranslate2推理加速
+fastapi
+uvicorn
+gradio>=4.0
+pyyaml
+tensorboard

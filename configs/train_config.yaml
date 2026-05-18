@@ -1,0 +1,71 @@
+# ============================================================
+# 训练配置文件 - 所有超参数集中管理
+# 面试加分点：配置驱动的训练pipeline，不在代码里硬编码
+# ============================================================
+
+model:
+  name: "openai/whisper-small"       # 基座模型，可选 whisper-base/small/medium
+  language: "zh"                     # 目标语言
+  task: "transcribe"
+
+data:
+  dataset_name: "google/fleurs"       # Mozilla 2025.10 把 Common Voice 从 HF 下架了，改用 FLEURS
+  language: "cmn_hans_cn"              # FLEURS 的普通话（简体）配置
+  text_column: "transcription"         # FLEURS 转写字段叫 transcription，不是 sentence
+  max_duration_sec: 30               # 过滤超长音频
+  min_duration_sec: 1                # 过滤过短音频
+  train_split: "train"
+  val_split: "validation"
+  test_split: "test"
+  sampling_rate: 16000
+
+noise_augment:
+  # 噪声增强配置
+  snr_levels: [20, 15, 10, 5]        # 信噪比等级（dB），从干净到嘈杂
+  noise_types: ["gaussian", "pink", "babble"]
+  augment_ratio: 0.5                 # 增强数据占总数据的比例
+
+curriculum:
+  # 课程学习配置 - 你的创新点
+  enabled: true
+  stages:                            # 训练分3个阶段，逐渐加大噪声难度
+    - name: "clean"
+      epochs: 3
+      snr_range: [20, 999]           # 前3个epoch只用干净/低噪音数据
+    - name: "moderate"
+      epochs: 4
+      snr_range: [10, 20]            # 中间4个epoch用中等噪音
+    - name: "hard"
+      epochs: 3
+      snr_range: [5, 15]             # 最后3个epoch用高噪音数据
+
+training:
+  output_dir: "/root/autodl-tmp/outputs"
+  num_epochs: 10
+  batch_size: 16
+  gradient_accumulation_steps: 2     # 等效batch_size = 16 * 2 = 32
+  learning_rate: 5.0e-6
+  warmup_steps: 500
+  eval_steps: 200
+  save_steps: 200
+  fp16: true                         # 混合精度训练，省显存
+  logging_dir: "./logs"
+
+lora:
+  enabled: true
+  r: 8                               # 低秩维度
+  lora_alpha: 32                     # 缩放系数
+  target_modules: ["q_proj", "v_proj"]
+  lora_dropout: 0.1
+  # rank消融实验用的值
+  ablation_ranks: [2, 4, 8, 16, 32]
+
+freeze:
+  # 冻结策略（用于Full fine-tune对比实验）
+  encoder_layers_to_freeze: 4        # 冻结encoder前4层
+
+inference:
+  model_path: "./outputs/best_model"
+  quantize: "int8"                   # int8量化
+  beam_sizes: [1, 3, 5, 10]          # 解码策略对比用
+  device: "cuda"

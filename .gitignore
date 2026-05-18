@@ -1,0 +1,6 @@
+*.pth
+*.bin
+*.safetensors
+dataset/
+output/
+outputs/
